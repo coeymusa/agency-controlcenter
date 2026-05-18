@@ -21,8 +21,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <header style={{ borderBottom: "1px solid #1f1f24", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <Link href="/" style={{ fontWeight: 700, letterSpacing: ".02em" }}>◆ control</Link>
+            <Link href="/today" style={{ fontWeight: 700, letterSpacing: ".02em" }}>◆ control</Link>
             <nav style={{ display: "flex", gap: 18, color: "#9b9ba3", fontSize: 13, alignItems: "center" }}>
+              <Link href="/today" style={{ color: "var(--accent)", fontWeight: 600 }}>Today</Link>
               <Link href="/">Prospects</Link>
               <Link href="/inbox" style={{ display: "inline-flex", alignItems: "center" }}>
                 Inbox<Badge n={counts.inbox} color="#6ee7b7" />
