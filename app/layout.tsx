@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getNavCounts } from "./components/NavCounts";
+import { PaletteMount } from "./components/PaletteMount";
 
 export const metadata: Metadata = {
   title: "Agency Control Center",
@@ -38,9 +39,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/settings">Settings</Link>
             </nav>
           </div>
-          <div style={{ color: "#9b9ba3", fontSize: 12 }}>agency-control-center</div>
+          <div style={{ color: "#9b9ba3", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="kbd" style={{ fontSize: 10 }}>⌘K</span>
+            <span>search</span>
+          </div>
         </header>
         <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px" }}>{children}</main>
+        <PaletteMount />
       </body>
     </html>
   );
