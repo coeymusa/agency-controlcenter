@@ -103,6 +103,27 @@ export function ComposerArea({
     }, 50);
   };
 
+  const onForward = (e: Email) => {
+    setReplyTo(null);
+    setOpen(true);
+    setPickedTemplateId(null);
+    setError(null); setOkMsg(null);
+    const fwdSubject = (e.subject ?? "").toLowerCase().startsWith("fwd:") ? e.subject : "Fwd: " + e.subject;
+    setSubject(fwdSubject);
+    const fwdBody = "\n\n---------- Forwarded message ----------\n" +
+      "From: " + (e.fromAddr ?? "") + "\n" +
+      "Date: " + (e.sentAt ? new Date(e.sentAt).toLocaleString() : new Date(e.createdAt).toLocaleString()) + "\n" +
+      "Subject: " + (e.subject ?? "") + "\n" +
+      "To: " + (e.toAddr ?? "") + "\n\n" +
+      (e.bodyText ?? "[HTML body]");
+    setBody(fwdBody);
+    setToAddr(""); // user types the destination
+    setTimeout(() => {
+      const el = document.getElementById("composer-anchor");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="card" style={{ overflow: "hidden" }}>
@@ -110,7 +131,7 @@ export function ComposerArea({
           <span>Conversation ({emails.length})</span>
           {!open && <button type="button" className="primary" onClick={() => { setReplyTo(null); setSubject(""); setBody(""); setPickedTemplateId(null); setOpen(true); }}>📧 new email</button>}
         </div>
-        <Thread emails={emails} onReply={onReply} tracking={tracking} />
+        <Thread emails={emails} onReply={onReply} onForward={onForward} tracking={tracking} />
       </div>
 
       <div id="composer-anchor" />

@@ -26,6 +26,7 @@ export function InboxRow({ row }: { row: any }) {
   const isUnread = !row.readAt;
   return (
     <div
+      data-inbox-row
       style={{
         display: "grid",
         gridTemplateColumns: "12px 1fr auto",
@@ -42,7 +43,7 @@ export function InboxRow({ row }: { row: any }) {
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "baseline", marginBottom: 2 }}>
           {row.slug ? (
-            <Link href={`/prospects/${row.slug}#email-${row.id}`} className="link" style={{ fontWeight: isUnread ? 600 : 500, fontSize: 14 }}>
+            <Link href={`/prospects/${row.slug}#email-${row.id}`} className="link" data-row-link style={{ fontWeight: isUnread ? 600 : 500, fontSize: 14 }}>
               {row.business}
             </Link>
           ) : (
@@ -60,6 +61,7 @@ export function InboxRow({ row }: { row: any }) {
         <button
           type="button"
           className="ghost"
+          data-row-read
           disabled={pending}
           style={{ fontSize: 10, padding: "2px 8px" }}
           onClick={() =>

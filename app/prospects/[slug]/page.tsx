@@ -162,20 +162,41 @@ export default async function ProspectDetail({ params }: { params: Promise<{ slu
 
       {links.length > 0 && (
         <div className="card">
-          <div style={{ padding: "12px 14px", borderBottom: "1px solid #1f1f24", fontWeight: 600 }}>Tracked Links</div>
-          <table>
-            <thead><tr><th>Label</th><th>Target</th><th>Code</th><th style={{ textAlign: "right" }}>Clicks</th></tr></thead>
-            <tbody>
-              {links.map((l) => (
-                <tr key={l.id}>
-                  <td>{l.label ?? "—"}</td>
-                  <td><a href={l.target} target="_blank" rel="noreferrer" className="link">{l.target}</a></td>
-                  <td className="muted"><code>{l.code}</code></td>
-                  <td style={{ textAlign: "right" }}>{l.clickCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--line)", fontWeight: 600 }}>Tracked Links · {links.length}</div>
+          {links.map((l) => {
+            const linkClicks = events.filter((ev) => ev.linkId === l.id && ev.type === "link_click");
+            return (
+              <div key={l.id} style={{ padding: "12px 14px", borderBottom: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    {l.label && <div style={{ fontSize: 12, fontWeight: 500 }}>{l.label}</div>}
+                    <a href={l.target} target="_blank" rel="noreferrer" className="link" style={{ fontSize: 12, wordBreak: "break-all" }}>{l.target}</a>
+                    <div className="dim" style={{ fontSize: 10, marginTop: 2 }}>
+                      code <code>{l.code}</code>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 18, fontWeight: 600, color: l.clickCount > 0 ? "var(--warn)" : "var(--dim)", fontVariantNumeric: "tabular-nums" }}>{l.clickCount}</div>
+                    <div className="dim" style={{ fontSize: 10 }}>click{l.clickCount === 1 ? "" : "s"}</div>
+                  </div>
+                </div>
+                {linkClicks.length > 0 && (
+                  <details style={{ fontSize: 11 }}>
+                    <summary className="muted" style={{ cursor: "pointer" }}>{linkClicks.length} click event{linkClicks.length === 1 ? "" : "s"}</summary>
+                    <div style={{ paddingLeft: 14, paddingTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+                      {linkClicks.slice(0, 20).map((ev) => (
+                        <div key={ev.id} style={{ display: "flex", gap: 10, color: "var(--sub)", fontSize: 11 }}>
+                          <span className="dim" style={{ fontVariantNumeric: "tabular-nums" }}>{new Date(ev.occurredAt).toLocaleString()}</span>
+                          {ev.ipAddr && <span className="dim">· {ev.ipAddr}</span>}
+                          {ev.userAgent && <span className="dim" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={ev.userAgent}>· {ev.userAgent.slice(0, 30)}…</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

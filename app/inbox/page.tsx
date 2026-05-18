@@ -3,6 +3,7 @@ import { db, schema } from "@/lib/db";
 import { eq, desc, and, isNull, or, ilike } from "drizzle-orm";
 import { InboxRow } from "./InboxRow";
 import { InboxSearch } from "./InboxSearch";
+import { InboxKeys } from "./InboxKeys";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,7 @@ export default async function Inbox({ searchParams }: { searchParams: Promise<{ 
       </div>
 
       <InboxSearch initial={q} unread={onlyUnread} />
+      <InboxKeys />
 
       <div className="card" style={{ overflow: "hidden" }}>
         {rows.length === 0 ? (
