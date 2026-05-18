@@ -216,7 +216,7 @@ export function ComposerArea({
               <input name="subject" value={subject || defaultSubject} onChange={(e) => setSubject(e.target.value)} required />
             </div>
             {showPreview ? (
-              <PreviewPane subject={subject || defaultSubject} body={body || defaultBody} />
+              <PreviewPane subject={subject || defaultSubject} body={body || defaultBody} signature={vars.signature} />
             ) : (
               <textarea name="body" rows={12} value={body || defaultBody} onChange={(e) => setBody(e.target.value)} style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif", fontSize: 13 }} />
             )}
@@ -256,21 +256,44 @@ export function ComposerArea({
 
 const URL_RE = /(https?:\/\/[^\s<>"']+)/g;
 
-function PreviewPane({ subject, body }: { subject: string; body: string }) {
-  // Construct what the email will roughly look like — show URLs with a tracked-link
-  // pseudo-prefix to make it obvious they're being rewritten.
-  const safe = body.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function PreviewPane({ subject, body, signature }: { subject: string; body: string; signature: string | null | undefined }) {
+  // Sandbox the preview inside an iframe so the email's HTML can't escape into
+  // the dashboard's styles and we see something close to what the recipient
+  // actually renders.
+  const withSig = signature && !body.includes(signature) ? body.trimEnd() + "\n\n" + signature : body;
+  const safe = escapeHtml(withSig);
   const linked = safe.split(/\n{2,}/).map((para) =>
-    `<p style="margin:0 0 12px">${para.replace(/\n/g, "<br>").replace(URL_RE, (u) => `<a href="${u}" style="color:#93c5fd;text-decoration:underline">${u}</a> <span style="font-size:10px;color:#fbbf24">[tracked]</span>`)}</p>`,
+    `<p style="margin:0 0 12px">${para.replace(/\n/g, "<br>").replace(URL_RE, (u) => `<a href="${u}" style="color:#0b5bb8;text-decoration:underline">${u}</a><span style="font-size:10px;color:#b58200;margin-left:4px;">[tracked]</span>`)}</p>`,
   ).join("\n");
+  const safeSubject = escapeHtml(subject || "(no subject)");
+
+  const doc = `<!doctype html><html><head><meta charset="utf-8">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background: #fff; color: #1a1a1a; line-height: 1.55; }
+  .hdr { border-bottom: 1px solid #e5e5e5; padding-bottom: 12px; margin-bottom: 16px; }
+  .from { font-size: 12px; color: #666; }
+  .subject { font-size: 18px; font-weight: 600; margin-top: 4px; }
+  .body { font-size: 14px; }
+  .pixel-note { margin-top: 24px; padding: 8px; background: #fff8e1; border: 1px dashed #d4a017; color: #8a6a00; font-size: 11px; border-radius: 4px; }
+</style></head><body>
+<div class="hdr"><div class="from">From: Corey Musa · To: recipient</div><div class="subject">${safeSubject}</div></div>
+<div class="body">${linked}</div>
+<div class="pixel-note">● 1×1 tracking pixel will be appended here on send</div>
+</body></html>`;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div className="muted" style={{ fontSize: 11 }}>preview · what the recipient sees (URLs become tracked /t/c/&lt;code&gt; on send)</div>
-      <div className="card" style={{ padding: 16, background: "#ffffff", color: "#111", borderColor: "var(--line)", minHeight: 200 }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 10, color: "#111" }}>{subject || "(no subject)"}</div>
-        <div style={{ fontSize: 14, lineHeight: 1.55, color: "#222" }} dangerouslySetInnerHTML={{ __html: linked }} />
-        <div style={{ marginTop: 14, fontSize: 10, color: "#fbbf24" }}>● 1×1 tracking pixel appended here</div>
-      </div>
+      <div className="muted" style={{ fontSize: 11 }}>preview · rendered in a sandboxed iframe (close to how the recipient will see it)</div>
+      <iframe
+        srcDoc={doc}
+        sandbox=""
+        style={{ width: "100%", height: 460, border: "1px solid var(--line)", borderRadius: 6, background: "#fff" }}
+        title="email preview"
+      />
     </div>
   );
 }

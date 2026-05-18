@@ -164,11 +164,18 @@ export async function sendPitchEmail(
   const base = (await getSetting("PUBLIC_BASE_URL")) ?? process.env.NEXT_PUBLIC_TRACK_BASE ?? "";
   if (!base) return { ok: false, error: "PUBLIC_BASE_URL not set — open /settings" };
 
+  // Auto-append the default signature if it's set and not already in the body
+  const signature = (await getSetting("DEFAULT_SIGNATURE")) ?? "";
+  let bodyWithSig = args.body;
+  if (signature && !bodyWithSig.includes(signature)) {
+    bodyWithSig = bodyWithSig.trimEnd() + "\n\n" + signature;
+  }
+
   const [emailRow] = await db.insert(schema.emails).values({
     prospectId: prospect.id,
     direction: "outbound",
     subject: args.subject,
-    bodyText: args.body,
+    bodyText: bodyWithSig,
     fromAddr: args.from ?? (await getSetting("RESEND_FROM")) ?? null,
     toAddr,
     sentAt: new Date(),
@@ -177,7 +184,7 @@ export async function sendPitchEmail(
 
   const used = new Set<string>();
   const gen = () => { let c; do { c = shortCode(8); } while (used.has(c)); used.add(c); return c; };
-  const { body: rewrittenText, links } = rewriteLinks(args.body, gen, base);
+  const { body: rewrittenText, links } = rewriteLinks(bodyWithSig, gen, base);
   for (const l of links) {
     await db.insert(schema.links).values({ code: l.code, emailId: emailRow.id, prospectId: prospect.id, target: l.target });
   }

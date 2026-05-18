@@ -64,7 +64,9 @@ ALTER TABLE "emails" ADD COLUMN IF NOT EXISTS "resend_message_id" text;
 CREATE UNIQUE INDEX IF NOT EXISTS "emails_resend_msg_idx" ON "emails" ("resend_message_id");
 ALTER TABLE "emails" ADD COLUMN IF NOT EXISTS "read_at" timestamp with time zone;
 ALTER TABLE "emails" ADD COLUMN IF NOT EXISTS "in_reply_to" text;
+ALTER TABLE "emails" ADD COLUMN IF NOT EXISTS "archived_at" timestamp with time zone;
 CREATE INDEX IF NOT EXISTS "emails_read_at_idx" ON "emails" ("read_at");
+CREATE INDEX IF NOT EXISTS "emails_archived_at_idx" ON "emails" ("archived_at");
 
 CREATE TABLE IF NOT EXISTS "links" (
   "id" serial PRIMARY KEY,

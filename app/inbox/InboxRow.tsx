@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { markEmailRead, markEmailUnread } from "./actions";
+import { markEmailRead, markEmailUnread, archiveEmail, unarchiveEmail } from "./actions";
 
 function relTime(t: Date | string | null): string {
   if (!t) return "—";
@@ -58,22 +58,40 @@ export function InboxRow({ row }: { row: any }) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
         <span className="dim" style={{ fontSize: 11, whiteSpace: "nowrap" }}>{relTime(row.sentAt ?? row.createdAt)}</span>
-        <button
-          type="button"
-          className="ghost"
-          data-row-read
-          disabled={pending}
-          style={{ fontSize: 10, padding: "2px 8px" }}
-          onClick={() =>
-            start(async () => {
-              if (isUnread) await markEmailRead(row.id);
-              else await markEmailUnread(row.id);
-              router.refresh();
-            })
-          }
-        >
-          {isUnread ? "mark read" : "mark unread"}
-        </button>
+        <div style={{ display: "flex", gap: 4 }}>
+          <button
+            type="button"
+            className="ghost"
+            data-row-read
+            disabled={pending}
+            style={{ fontSize: 10, padding: "2px 8px" }}
+            onClick={() =>
+              start(async () => {
+                if (isUnread) await markEmailRead(row.id);
+                else await markEmailUnread(row.id);
+                router.refresh();
+              })
+            }
+          >
+            {isUnread ? "read" : "unread"}
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            data-row-archive
+            disabled={pending}
+            style={{ fontSize: 10, padding: "2px 8px" }}
+            onClick={() =>
+              start(async () => {
+                if (row.archivedAt) await unarchiveEmail(row.id);
+                else await archiveEmail(row.id);
+                router.refresh();
+              })
+            }
+          >
+            {row.archivedAt ? "unarchive" : "archive"}
+          </button>
+        </div>
       </div>
     </div>
   );

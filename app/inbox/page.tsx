@@ -7,13 +7,15 @@ import { InboxKeys } from "./InboxKeys";
 
 export const dynamic = "force-dynamic";
 
-export default async function Inbox({ searchParams }: { searchParams: Promise<{ unread?: string; q?: string }> }) {
+export default async function Inbox({ searchParams }: { searchParams: Promise<{ unread?: string; q?: string; archived?: string }> }) {
   const sp = await searchParams;
   const onlyUnread = sp.unread === "1";
+  const showArchived = sp.archived === "1";
   const q = (sp.q ?? "").trim();
 
   const filters: any[] = [eq(schema.emails.direction, "inbound")];
   if (onlyUnread) filters.push(isNull(schema.emails.readAt));
+  if (!showArchived) filters.push(isNull(schema.emails.archivedAt));
   if (q) {
     const like = `%${q}%`;
     filters.push(
@@ -36,6 +38,7 @@ export default async function Inbox({ searchParams }: { searchParams: Promise<{ 
       sentAt: schema.emails.sentAt,
       createdAt: schema.emails.createdAt,
       readAt: schema.emails.readAt,
+      archivedAt: schema.emails.archivedAt,
       prospectId: schema.emails.prospectId,
       slug: schema.prospects.slug,
       business: schema.prospects.business,
@@ -61,9 +64,10 @@ export default async function Inbox({ searchParams }: { searchParams: Promise<{ 
             {q && <> · matching <code style={{ color: "var(--warn)" }}>{q}</code></>}.
           </div>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          <Link href={q ? `/inbox?q=${encodeURIComponent(q)}` : "/inbox"} className={`pill ${!onlyUnread ? "active" : "slate"} clickable`}>all</Link>
-          <Link href={q ? `/inbox?unread=1&q=${encodeURIComponent(q)}` : "/inbox?unread=1"} className={`pill ${onlyUnread ? "active" : "slate"} clickable`}>unread only</Link>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <Link href={q ? `/inbox?q=${encodeURIComponent(q)}` : "/inbox"} className={`pill ${!onlyUnread && !showArchived ? "active" : "slate"} clickable`}>inbox</Link>
+          <Link href={q ? `/inbox?unread=1&q=${encodeURIComponent(q)}` : "/inbox?unread=1"} className={`pill ${onlyUnread ? "active" : "slate"} clickable`}>unread</Link>
+          <Link href={q ? `/inbox?archived=1&q=${encodeURIComponent(q)}` : "/inbox?archived=1"} className={`pill ${showArchived ? "active" : "slate"} clickable`}>archived</Link>
         </div>
       </div>
 

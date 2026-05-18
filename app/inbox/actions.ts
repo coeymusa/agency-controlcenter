@@ -27,3 +27,17 @@ export async function markProspectInboxRead(prospectId: number) {
     ));
   revalidatePath("/inbox");
 }
+
+export async function archiveEmail(emailId: number) {
+  await db.update(schema.emails)
+    .set({ archivedAt: new Date(), readAt: new Date() })
+    .where(eq(schema.emails.id, emailId));
+  revalidatePath("/inbox");
+}
+
+export async function unarchiveEmail(emailId: number) {
+  await db.update(schema.emails)
+    .set({ archivedAt: null })
+    .where(eq(schema.emails.id, emailId));
+  revalidatePath("/inbox");
+}

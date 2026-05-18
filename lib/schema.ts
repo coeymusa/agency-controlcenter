@@ -107,6 +107,7 @@ export const emails = pgTable(
     resendMessageId: text("resend_message_id"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     readAt: timestamp("read_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     inReplyTo: text("in_reply_to"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
