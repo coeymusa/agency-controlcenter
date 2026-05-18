@@ -113,6 +113,7 @@ export default async function ProspectDetail({ params }: { params: Promise<{ slu
           business: prospect.business,
           contactName: prospect.contactName,
           contactEmail: prospect.contactEmail,
+          website: prospect.website,
           pitchUrl: prospect.pitchUrl,
           location: prospect.location,
           industry: prospect.industry,

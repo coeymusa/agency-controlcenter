@@ -2,21 +2,36 @@ export type Vars = {
   business?: string | null;
   contactName?: string | null;
   contactEmail?: string | null;
+  website?: string | null;
   pitchUrl?: string | null;
   location?: string | null;
   industry?: string | null;
   signature?: string | null;
 };
 
+function bareDomain(url: string | null | undefined): string {
+  if (!url) return "";
+  return url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+}
+
+function todayPlus(days: number): string {
+  const d = new Date(Date.now() + days * 86400_000);
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+}
+
 const FIELD_MAP: Record<string, (v: Vars) => string> = {
   business: (v) => v.business ?? "",
   contactName: (v) => v.contactName ?? "",
   firstName: (v) => (v.contactName ?? "").split(/\s+/)[0] ?? "",
   contactEmail: (v) => v.contactEmail ?? "",
+  website: (v) => bareDomain(v.website),
   pitchUrl: (v) => v.pitchUrl ?? "",
   location: (v) => v.location ?? "",
   industry: (v) => v.industry ?? "",
   signature: (v) => v.signature ?? "",
+  // Auto-derived
+  deadline: () => todayPlus(10),
+  shortDeadline: () => todayPlus(7),
 };
 
 export const VAR_KEYS = Object.keys(FIELD_MAP) as (keyof typeof FIELD_MAP)[];

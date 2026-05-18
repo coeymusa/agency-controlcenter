@@ -26,6 +26,7 @@ export async function oneClickSend(slug: string, scope: "cold" | "followup" | "b
     business: prospect.business,
     contactName: prospect.contactName,
     contactEmail: prospect.contactEmail,
+    website: prospect.website,
     pitchUrl: prospect.pitchUrl,
     location: prospect.location,
     industry: prospect.industry,
