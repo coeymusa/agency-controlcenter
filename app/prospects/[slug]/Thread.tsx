@@ -16,6 +16,25 @@ type Email = {
   resendMessageId: string | null;
 };
 
+type Tracking = {
+  opens: number;
+  clicks: number;
+  firstOpenAt: string | Date | null;
+  lastOpenAt: string | Date | null;
+  lastClickAt: string | Date | null;
+};
+
+function relPast(t: Date | string | null): string {
+  if (!t) return "";
+  const d = t instanceof Date ? t : new Date(t);
+  const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  if (s < 86400 * 7) return Math.floor(s / 86400) + "d ago";
+  return d.toLocaleDateString();
+}
+
 function fmt(t: Date | string | null): string {
   if (!t) return "—";
   const d = t instanceof Date ? t : new Date(t);
@@ -38,7 +57,7 @@ function collapseQuoted(text: string): { visible: string; quoted: string | null 
   return { visible: lines.slice(0, cut).join("\n").trimEnd(), quoted: lines.slice(cut).join("\n") };
 }
 
-function Bubble({ e, onReply }: { e: Email; onReply: (e: Email) => void }) {
+function Bubble({ e, onReply, tracking }: { e: Email; onReply: (e: Email) => void; tracking?: Tracking }) {
   const isOut = e.direction === "outbound";
   const text = e.bodyText ?? (e.bodyHtml ? "[HTML body]" : "");
   const { visible, quoted } = collapseQuoted(text);
@@ -82,6 +101,16 @@ function Bubble({ e, onReply }: { e: Email; onReply: (e: Email) => void }) {
             )}
           </div>
         )}
+        {isOut && tracking && (tracking.opens > 0 || tracking.clicks > 0) && (
+          <div style={{ fontSize: 11, color: "var(--sub)", display: "flex", gap: 10, flexWrap: "wrap", paddingTop: 6, borderTop: "1px solid var(--line)" }}>
+            <span style={{ color: tracking.opens > 0 ? "var(--warn)" : "var(--dim)" }} title={tracking.lastOpenAt ? "last open " + relPast(tracking.lastOpenAt) : ""}>
+              👁 {tracking.opens} open{tracking.opens === 1 ? "" : "s"}{tracking.firstOpenAt && <> · first {relPast(tracking.firstOpenAt)}</>}
+            </span>
+            <span style={{ color: tracking.clicks > 0 ? "var(--warn)" : "var(--dim)" }} title={tracking.lastClickAt ? "last click " + relPast(tracking.lastClickAt) : ""}>
+              ↗ {tracking.clicks} click{tracking.clicks === 1 ? "" : "s"}
+            </span>
+          </div>
+        )}
         {!isOut && (
           <div>
             <button type="button" className="ghost" style={{ fontSize: 11 }} onClick={() => onReply(e)}>↩ Reply</button>
@@ -92,7 +121,7 @@ function Bubble({ e, onReply }: { e: Email; onReply: (e: Email) => void }) {
   );
 }
 
-export function Thread({ emails, onReply }: { emails: Email[]; onReply: (e: Email) => void }) {
+export function Thread({ emails, onReply, tracking }: { emails: Email[]; onReply: (e: Email) => void; tracking?: Record<number, Tracking> }) {
   // Scroll the deep-linked email into view if a fragment is present
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -117,7 +146,7 @@ export function Thread({ emails, onReply }: { emails: Email[]; onReply: (e: Emai
   });
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14 }}>
-      {ordered.map((e) => <Bubble key={e.id} e={e} onReply={onReply} />)}
+      {ordered.map((e) => <Bubble key={e.id} e={e} onReply={onReply} tracking={tracking?.[e.id]} />)}
     </div>
   );
 }

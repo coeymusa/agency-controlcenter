@@ -1,17 +1,29 @@
 import Link from "next/link";
 import { db, schema } from "@/lib/db";
-import { eq, desc, and, isNull } from "drizzle-orm";
+import { eq, desc, and, isNull, or, ilike } from "drizzle-orm";
 import { InboxRow } from "./InboxRow";
+import { InboxSearch } from "./InboxSearch";
 
 export const dynamic = "force-dynamic";
 
-export default async function Inbox({ searchParams }: { searchParams: Promise<{ unread?: string }> }) {
+export default async function Inbox({ searchParams }: { searchParams: Promise<{ unread?: string; q?: string }> }) {
   const sp = await searchParams;
   const onlyUnread = sp.unread === "1";
+  const q = (sp.q ?? "").trim();
 
-  const baseWhere = onlyUnread
-    ? and(eq(schema.emails.direction, "inbound"), isNull(schema.emails.readAt))
-    : eq(schema.emails.direction, "inbound");
+  const filters: any[] = [eq(schema.emails.direction, "inbound")];
+  if (onlyUnread) filters.push(isNull(schema.emails.readAt));
+  if (q) {
+    const like = `%${q}%`;
+    filters.push(
+      or(
+        ilike(schema.emails.subject, like),
+        ilike(schema.emails.fromAddr, like),
+        ilike(schema.emails.bodyText, like),
+        ilike(schema.prospects.business, like),
+      ),
+    );
+  }
 
   const rows = await db
     .select({
@@ -30,7 +42,7 @@ export default async function Inbox({ searchParams }: { searchParams: Promise<{ 
     })
     .from(schema.emails)
     .leftJoin(schema.prospects, eq(schema.emails.prospectId, schema.prospects.id))
-    .where(baseWhere)
+    .where(and(...filters))
     .orderBy(desc(schema.emails.sentAt))
     .limit(200);
 
@@ -40,23 +52,26 @@ export default async function Inbox({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Inbox</h1>
           <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-            All inbound replies across every prospect. {unreadCount > 0 ? <strong style={{ color: "var(--accent)" }}>{unreadCount} unread</strong> : <span className="dim">all read</span>}.
+            All inbound replies across every prospect. {unreadCount > 0 ? <strong style={{ color: "var(--accent)" }}>{unreadCount} unread</strong> : <span className="dim">all read</span>}
+            {q && <> · matching <code style={{ color: "var(--warn)" }}>{q}</code></>}.
           </div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <Link href="/inbox" className={`pill ${!onlyUnread ? "active" : "slate"} clickable`}>all</Link>
-          <Link href="/inbox?unread=1" className={`pill ${onlyUnread ? "active" : "slate"} clickable`}>unread only</Link>
+          <Link href={q ? `/inbox?q=${encodeURIComponent(q)}` : "/inbox"} className={`pill ${!onlyUnread ? "active" : "slate"} clickable`}>all</Link>
+          <Link href={q ? `/inbox?unread=1&q=${encodeURIComponent(q)}` : "/inbox?unread=1"} className={`pill ${onlyUnread ? "active" : "slate"} clickable`}>unread only</Link>
         </div>
       </div>
+
+      <InboxSearch initial={q} unread={onlyUnread} />
 
       <div className="card" style={{ overflow: "hidden" }}>
         {rows.length === 0 ? (
           <div style={{ padding: 30, textAlign: "center" }}>
-            <span className="dim">{onlyUnread ? "no unread messages" : "no inbound mail yet"}</span>
+            <span className="dim">{q ? "no matches" : onlyUnread ? "no unread messages" : "no inbound mail yet"}</span>
           </div>
         ) : (
           <div>

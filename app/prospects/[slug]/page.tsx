@@ -5,7 +5,7 @@ import { desc, eq } from "drizzle-orm";
 import { EditPanel } from "./EditPanel";
 import { ComposerArea } from "./ComposerArea";
 import { getSetting } from "@/lib/settings";
-import { desc as desc2 } from "drizzle-orm";
+import { desc as desc2, sql, inArray } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +48,30 @@ export default async function ProspectDetail({ params }: { params: Promise<{ slu
     .where(eq(schema.emailDrafts.prospectId, prospect.id))
     .limit(1);
 
+  // Per-email tracking aggregates for outbound emails in this thread
+  const outboundIds = emails.filter((e) => e.direction === "outbound").map((e) => e.id);
+  const trackRows = outboundIds.length
+    ? await db
+        .select({
+          emailId: schema.events.emailId,
+          type: schema.events.type,
+          n: sql<number>`count(*)::int`,
+          first: sql<Date | null>`min(${schema.events.occurredAt})`,
+          last: sql<Date | null>`max(${schema.events.occurredAt})`,
+        })
+        .from(schema.events)
+        .where(inArray(schema.events.emailId, outboundIds))
+        .groupBy(schema.events.emailId, schema.events.type)
+    : [];
+  const tracking: Record<number, { opens: number; clicks: number; firstOpenAt: Date | null; lastOpenAt: Date | null; lastClickAt: Date | null }> = {};
+  for (const r of trackRows) {
+    if (r.emailId == null) continue;
+    if (!tracking[r.emailId]) tracking[r.emailId] = { opens: 0, clicks: 0, firstOpenAt: null, lastOpenAt: null, lastClickAt: null };
+    const slot = tracking[r.emailId];
+    if (r.type === "email_open") { slot.opens = Number(r.n); slot.firstOpenAt = r.first; slot.lastOpenAt = r.last; }
+    else if (r.type === "link_click") { slot.clicks = Number(r.n); slot.lastClickAt = r.last; }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div>
@@ -84,6 +108,7 @@ export default async function ProspectDetail({ params }: { params: Promise<{ slu
         prospectId={prospect.id}
         templates={(await db.select().from(schema.emailTemplates).orderBy(desc2(schema.emailTemplates.updatedAt))).map((t) => ({ id: t.id, name: t.name, scope: t.scope, subject: t.subject, body: t.body }))}
         initialDraft={draft ? { subject: draft.subject, body: draft.body, fromAddr: draft.fromAddr, toAddr: draft.toAddr, inReplyTo: draft.inReplyTo, updatedAt: draft.updatedAt } : null}
+        tracking={tracking}
         vars={{
           business: prospect.business,
           contactName: prospect.contactName,

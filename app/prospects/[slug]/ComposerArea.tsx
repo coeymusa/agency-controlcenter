@@ -25,13 +25,16 @@ type Template = { id: number; name: string; scope: string; subject: string; body
 
 type Draft = { subject: string; body: string; fromAddr: string | null; toAddr: string | null; inReplyTo: string | null; updatedAt: string | Date } | null;
 
+type Tracking = { opens: number; clicks: number; firstOpenAt: string | Date | null; lastOpenAt: string | Date | null; lastClickAt: string | Date | null };
+
 export function ComposerArea({
   slug, defaultTo, defaultFrom, pitchUrl, business, emails, prospectId,
-  templates, vars, initialDraft,
+  templates, vars, initialDraft, tracking,
 }: {
   slug: string; defaultTo: string; defaultFrom: string; pitchUrl: string | null;
   business: string; emails: Email[]; prospectId: number;
   templates: Template[]; vars: Vars; initialDraft: Draft;
+  tracking?: Record<number, Tracking>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<boolean>(!!initialDraft);
@@ -107,7 +110,7 @@ export function ComposerArea({
           <span>Conversation ({emails.length})</span>
           {!open && <button type="button" className="primary" onClick={() => { setReplyTo(null); setSubject(""); setBody(""); setPickedTemplateId(null); setOpen(true); }}>📧 new email</button>}
         </div>
-        <Thread emails={emails} onReply={onReply} />
+        <Thread emails={emails} onReply={onReply} tracking={tracking} />
       </div>
 
       <div id="composer-anchor" />
