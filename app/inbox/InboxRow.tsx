@@ -78,6 +78,18 @@ export function InboxRow({ row }: { row: any }) {
           <button
             type="button"
             className="ghost"
+            disabled={pending}
+            style={{ fontSize: 10, padding: "2px 8px" }}
+            title="quick look"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("inbox-quicklook", { detail: { id: row.id } }));
+            }}
+          >
+            👁
+          </button>
+          <button
+            type="button"
+            className="ghost"
             data-row-archive
             disabled={pending}
             style={{ fontSize: 10, padding: "2px 8px" }}

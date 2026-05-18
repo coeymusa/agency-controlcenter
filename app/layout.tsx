@@ -30,6 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 Follow-ups<Badge n={counts.followups} color="#fbbf24" />
               </Link>
               <Link href="/sent">Sent</Link>
+              <Link href="/scheduled">Scheduled</Link>
               <Link href="/emails">Emails</Link>
               <Link href="/templates">Templates</Link>
               <Link href="/bulk-send">Bulk send</Link>

@@ -4,6 +4,7 @@ import { eq, desc, and, isNull, or, ilike } from "drizzle-orm";
 import { InboxRow } from "./InboxRow";
 import { InboxSearch } from "./InboxSearch";
 import { InboxKeys } from "./InboxKeys";
+import { QuickLook } from "./QuickLook";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,15 @@ export default async function Inbox({ searchParams }: { searchParams: Promise<{ 
           </div>
         )}
       </div>
+
+      <QuickLook
+        rows={rows.map((r) => ({
+          id: r.id, subject: r.subject, fromAddr: r.fromAddr,
+          bodyText: r.bodyText, bodyHtml: r.bodyHtml,
+          sentAt: r.sentAt, createdAt: r.createdAt,
+          slug: r.slug, business: r.business,
+        }))}
+      />
     </div>
   );
 }

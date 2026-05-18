@@ -46,6 +46,8 @@ export function ComposerArea({
   const [draftSavedAt, setDraftSavedAt] = useState<number | null>(initialDraft ? new Date(initialDraft.updatedAt).getTime() : null);
   const [toAddr, setToAddr] = useState<string>(initialDraft?.toAddr ?? "");
   const [fromAddr, setFromAddr] = useState<string>(initialDraft?.fromAddr ?? "");
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduledFor, setScheduledFor] = useState<string>("");
 
   // Mark inbound emails as read whenever the page mounts
   useEffect(() => {
@@ -195,11 +197,14 @@ export function ComposerArea({
                 subject: String(fd.get("subject") ?? ""),
                 body: String(fd.get("body") ?? ""),
                 inReplyToInternetMessageId: replyTo?.internetMessageId ?? undefined,
+                scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
               });
               if ("ok" in r && r.ok) {
-                setOkMsg(`sent ✓ (email #${r.emailId})`);
+                if (r.scheduledFor) setOkMsg(`scheduled ⏱ for ${new Date(r.scheduledFor).toLocaleString()} (email #${r.emailId})`);
+                else setOkMsg(`sent ✓ (email #${r.emailId})`);
                 if (!replyTo) await clearDraft(prospectId);
                 setOpen(false); setReplyTo(null); setSubject(""); setBody(""); setDraftSavedAt(null);
+                setScheduleOpen(false); setScheduledFor("");
                 router.refresh();
               } else if ("error" in r) {
                 setError(r.error);
@@ -227,13 +232,25 @@ export function ComposerArea({
               </span>
               {draftSavedAt && !replyTo && <span className="dim">draft saved {Math.max(1, Math.floor((Date.now() - draftSavedAt) / 1000))}s ago</span>}
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <button type="submit" className="primary" disabled={pending}>
-                {pending ? "sending…" : (replyTo ? "send reply" : "send via Resend")}
+                {pending ? (scheduledFor ? "scheduling…" : "sending…") : (scheduledFor ? "schedule ⏱" : replyTo ? "send reply" : "send via Resend")}
               </button>
               <button type="button" className="ghost" onClick={() => setShowPreview((v) => !v)}>
                 {showPreview ? "edit" : "preview"}
               </button>
+              <button type="button" className="ghost" onClick={() => setScheduleOpen((v) => !v)}>
+                {scheduleOpen ? "now" : "later ⏱"}
+              </button>
+              {scheduleOpen && (
+                <input
+                  type="datetime-local"
+                  value={scheduledFor}
+                  onChange={(e) => setScheduledFor(e.target.value)}
+                  min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+                  style={{ fontSize: 12 }}
+                />
+              )}
               {!replyTo && draftSavedAt && (
                 <button
                   type="button"

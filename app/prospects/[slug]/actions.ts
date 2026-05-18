@@ -77,6 +77,18 @@ export async function deleteProspect(slug: string) {
   return { ok: true };
 }
 
+export async function cancelScheduled(emailId: number) {
+  // Only remove rows that are still in the queue (not yet handed off to Resend)
+  const [row] = await db.select().from(schema.emails).where(eq(schema.emails.id, emailId)).limit(1);
+  if (!row || row.resendMessageId) return { ok: false as const, error: "already sent" };
+  await db.delete(schema.links).where(eq(schema.links.emailId, emailId));
+  await db.delete(schema.events).where(eq(schema.events.emailId, emailId));
+  await db.delete(schema.emails).where(eq(schema.emails.id, emailId));
+  revalidatePath("/scheduled");
+  revalidatePath("/");
+  return { ok: true as const };
+}
+
 // --- Drafts ---
 export async function saveDraft(prospectId: number, args: { subject: string; body: string; fromAddr?: string | null; toAddr?: string | null; inReplyTo?: string | null }) {
   await db
@@ -152,8 +164,8 @@ export async function bulkDelete(slugs: string[]) {
 
 export async function sendPitchEmail(
   slug: string,
-  args: { to?: string; from?: string; subject: string; body: string; inReplyToInternetMessageId?: string },
-): Promise<{ ok: true; emailId: number; resendId: string } | { ok: false; error: string }> {
+  args: { to?: string; from?: string; subject: string; body: string; inReplyToInternetMessageId?: string; scheduledFor?: string | null },
+): Promise<{ ok: true; emailId: number; resendId: string | null; scheduledFor?: string } | { ok: false; error: string }> {
   const { getSetting } = await import("@/lib/settings");
   const { resendSend, rewriteLinks, htmlWithPixel, textToHtml } = await import("@/lib/resend");
   const { shortCode } = await import("@/lib/auth");
@@ -171,6 +183,9 @@ export async function sendPitchEmail(
     bodyWithSig = bodyWithSig.trimEnd() + "\n\n" + signature;
   }
 
+  const scheduled = args.scheduledFor ? new Date(args.scheduledFor) : null;
+  const isScheduled = scheduled !== null && scheduled.getTime() > Date.now() + 30_000; // 30s buffer
+
   const [emailRow] = await db.insert(schema.emails).values({
     prospectId: prospect.id,
     direction: "outbound",
@@ -178,7 +193,8 @@ export async function sendPitchEmail(
     bodyText: bodyWithSig,
     fromAddr: args.from ?? (await getSetting("RESEND_FROM")) ?? null,
     toAddr,
-    sentAt: new Date(),
+    sentAt: isScheduled ? null : new Date(),
+    scheduledFor: isScheduled ? scheduled : null,
     inReplyTo: args.inReplyToInternetMessageId ?? null,
   }).returning();
 
@@ -190,6 +206,22 @@ export async function sendPitchEmail(
   }
   let html = textToHtml(rewrittenText);
   html = htmlWithPixel(html, emailRow.id, base);
+
+  // If the user picked a future time, save the row and return — the cron
+  // dispatcher will send it when its time arrives.
+  if (isScheduled) {
+    await db.update(schema.emails).set({ bodyHtml: html }).where(eq(schema.emails.id, emailRow.id));
+    await db.insert(schema.events).values({
+      type: "note",
+      emailId: emailRow.id,
+      prospectId: prospect.id,
+      metadata: { scheduledFor: scheduled!.toISOString(), action: "scheduled" },
+    });
+    revalidatePath(`/prospects/${slug}`);
+    revalidatePath(`/scheduled`);
+    revalidatePath(`/`);
+    return { ok: true, emailId: emailRow.id, resendId: null, scheduledFor: scheduled!.toISOString() };
+  }
 
   try {
     const sent = await resendSend({
