@@ -71,6 +71,18 @@ export async function updateContact(slug: string, fields: { contactName?: string
   return { ok: true };
 }
 
+export async function updatePitchIssues(slug: string, pitchIssues: string) {
+  const [existing] = await db.select().from(schema.prospects).where(eq(schema.prospects.slug, slug)).limit(1);
+  if (!existing) return { ok: false };
+  await db
+    .update(schema.prospects)
+    .set({ pitchIssues, updatedAt: new Date() })
+    .where(eq(schema.prospects.id, existing.id));
+  revalidatePath(`/prospects/${slug}`);
+  revalidatePath(`/today`);
+  return { ok: true };
+}
+
 export async function deleteProspect(slug: string) {
   await db.delete(schema.prospects).where(eq(schema.prospects.slug, slug));
   revalidatePath(`/`);

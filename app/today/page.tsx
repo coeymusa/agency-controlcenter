@@ -156,20 +156,35 @@ export default async function Today() {
             <Link href="/templates" className="link" style={{ fontSize: 13 }}>Add one</Link> to enable one-click sends.
           </div>
         )}
-        {readyToSend.map((p) => (
-          <div key={p.id} className="card" style={{ padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                <Link href={`/prospects/${p.slug}`} className="link" style={{ fontWeight: 600, fontSize: 14 }}>{p.business}</Link>
-                <span className="dim" style={{ fontSize: 11 }}>· {p.contactEmail}</span>
+        {readyToSend.map((p) => {
+          const hasIssues = !!p.pitchIssues?.trim();
+          return (
+            <div key={p.id} className="card" style={{ padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                  <Link href={`/prospects/${p.slug}`} className="link" style={{ fontWeight: 600, fontSize: 14 }}>{p.business}</Link>
+                  <span className="dim" style={{ fontSize: 11 }}>· {p.contactEmail}</span>
+                  {!hasIssues && <span className="pill amber" style={{ fontSize: 10 }}>needs issues</span>}
+                </div>
+                <div className="dim" style={{ fontSize: 11, marginTop: 2 }}>
+                  {[p.location, p.industry].filter(Boolean).join(" · ")} {p.pitchUrl && <>· <a href={p.pitchUrl} target="_blank" rel="noreferrer" className="link">mock ↗</a></>}
+                </div>
+                {hasIssues && (
+                  <div className="dim" style={{ fontSize: 11, marginTop: 4, fontStyle: "italic", whiteSpace: "pre-wrap", lineHeight: 1.4 }}>
+                    {p.pitchIssues!.slice(0, 200)}{(p.pitchIssues?.length ?? 0) > 200 ? "…" : ""}
+                  </div>
+                )}
               </div>
-              <div className="dim" style={{ fontSize: 11, marginTop: 2 }}>
-                {[p.location, p.industry].filter(Boolean).join(" · ")} · {p.pitchUrl && <a href={p.pitchUrl} target="_blank" rel="noreferrer" className="link">mock ↗</a>}
-              </div>
+              {hasIssues ? (
+                <TodayActions slug={p.slug} business={p.business} kind="cold" disabled={!hasColdTemplate.length} />
+              ) : (
+                <Link href={`/prospects/${p.slug}#pitch-issues-form`} className="primary" style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, textDecoration: "none" }}>
+                  ✏ add issues
+                </Link>
+              )}
             </div>
-            <TodayActions slug={p.slug} business={p.business} kind="cold" disabled={!hasColdTemplate.length} />
-          </div>
-        ))}
+          );
+        })}
       </Section>
 
       {/* Section 4: warm leads */}

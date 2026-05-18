@@ -27,9 +27,7 @@ in my spare time when the current one is leaving conversions on the table.
 I've already built a working mini-site preview of a rebuilt {{website}}
 (clickable, not just mockups). Three things stood out:
 
-• [add issue 1 — tease the problem, do NOT explain the fix]
-• [add issue 2]
-• [add issue 3]
+{{issues}}
 
 The full rebuild is live, so you can click through it before deciding
 anything:

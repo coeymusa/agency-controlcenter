@@ -4,6 +4,7 @@ export type Vars = {
   contactEmail?: string | null;
   website?: string | null;
   pitchUrl?: string | null;
+  pitchIssues?: string | null;
   location?: string | null;
   industry?: string | null;
   signature?: string | null;
@@ -26,6 +27,7 @@ const FIELD_MAP: Record<string, (v: Vars) => string> = {
   contactEmail: (v) => v.contactEmail ?? "",
   website: (v) => bareDomain(v.website),
   pitchUrl: (v) => v.pitchUrl ?? "",
+  issues: (v) => v.pitchIssues ?? "",
   location: (v) => v.location ?? "",
   industry: (v) => v.industry ?? "",
   signature: (v) => v.signature ?? "",

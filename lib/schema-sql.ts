@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS "prospects" (
 CREATE UNIQUE INDEX IF NOT EXISTS "prospects_slug_idx" ON "prospects" ("slug");
 CREATE INDEX IF NOT EXISTS "prospects_status_idx" ON "prospects" ("status");
 ALTER TABLE "prospects" ADD COLUMN IF NOT EXISTS "snoozed_until" timestamp with time zone;
+ALTER TABLE "prospects" ADD COLUMN IF NOT EXISTS "pitch_issues" text;
 CREATE INDEX IF NOT EXISTS "prospects_snoozed_idx" ON "prospects" ("snoozed_until");
 
 CREATE TABLE IF NOT EXISTS "emails" (

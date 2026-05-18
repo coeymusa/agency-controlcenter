@@ -76,6 +76,7 @@ export const prospects = pgTable(
     notes: text("notes"),
     pitchUrl: text("pitch_url"),
     pitchDeployedAt: timestamp("pitch_deployed_at", { withTimezone: true }),
+    pitchIssues: text("pitch_issues"),
     snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

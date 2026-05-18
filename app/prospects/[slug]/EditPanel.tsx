@@ -7,6 +7,7 @@ import {
   removeTag,
   updateNotes,
   updateContact,
+  updatePitchIssues,
   deleteProspect,
 } from "./actions";
 import { ALL_STATUSES } from "@/lib/classify";
@@ -20,6 +21,7 @@ type Prospect = {
   contactEmail: string | null;
   website: string | null;
   pitchUrl: string | null;
+  pitchIssues: string | null;
   location: string | null;
   industry: string | null;
 };
@@ -89,6 +91,25 @@ export function EditPanel({ prospect }: { prospect: Prospect }) {
         <button className="primary" disabled={pending} type="submit" style={{ gridColumn: "1 / -1" }}>
           save contact
         </button>
+      </form>
+
+      <form
+        id="pitch-issues-form"
+        action={(fd) => start(() => updatePitchIssues(prospect.slug, String(fd.get("pitchIssues") ?? "")).then(() => router.refresh()))}
+        style={{ display: "flex", flexDirection: "column", gap: 6 }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <label className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em" }}>Pitch issues (3 teaser bullets)</label>
+          <span className="dim" style={{ fontSize: 10 }}>injected as <code>{`{{issues}}`}</code> in the cold template</span>
+        </div>
+        <textarea
+          name="pitchIssues"
+          rows={4}
+          defaultValue={prospect.pitchIssues ?? ""}
+          placeholder={"• Heritage story buried below the product grid, no AggregateRating block, no LocalBusiness schema.\n• Hero loads 4MB hero image with no lazy-loading.\n• Booking flow is 6 clicks deep from the home page."}
+          style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}
+        />
+        <button disabled={pending} type="submit">save issues</button>
       </form>
 
       <form

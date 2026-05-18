@@ -28,10 +28,16 @@ export async function oneClickSend(slug: string, scope: "cold" | "followup" | "b
     contactEmail: prospect.contactEmail,
     website: prospect.website,
     pitchUrl: prospect.pitchUrl,
+    pitchIssues: prospect.pitchIssues,
     location: prospect.location,
     industry: prospect.industry,
     signature,
   };
+  // Refuse to fire the cold template if pitch issues are missing — sending
+  // bare `{{issues}}` placeholder would embarrass us.
+  if (scope === "cold" && tpl.body.includes("{{issues}}") && !prospect.pitchIssues?.trim()) {
+    return { ok: false, error: "Add 3 issue bullets on the prospect page first (the cold template needs them)." };
+  }
   const subject = substitute(tpl.subject, vars);
   const body = substitute(tpl.body, vars);
 

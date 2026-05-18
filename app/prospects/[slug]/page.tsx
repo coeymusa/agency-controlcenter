@@ -115,6 +115,7 @@ export default async function ProspectDetail({ params }: { params: Promise<{ slu
           contactEmail: prospect.contactEmail,
           website: prospect.website,
           pitchUrl: prospect.pitchUrl,
+          pitchIssues: prospect.pitchIssues,
           location: prospect.location,
           industry: prospect.industry,
           signature: (await getSetting("DEFAULT_SIGNATURE")) ?? "",
@@ -145,6 +146,7 @@ export default async function ProspectDetail({ params }: { params: Promise<{ slu
           contactEmail: prospect.contactEmail,
           website: prospect.website,
           pitchUrl: prospect.pitchUrl,
+          pitchIssues: prospect.pitchIssues,
           location: prospect.location,
           industry: prospect.industry,
         }}
