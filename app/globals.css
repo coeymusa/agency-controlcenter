@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0a0a0b;
+  --panel: #111114;
+  --panel-2: #161619;
+  --line: #1f1f24;
+  --line-2: #2a2a31;
+  --ink: #e8e8ea;
+  --sub: #9b9ba3;
+  --dim: #6b6b73;
+  --accent: #6ee7b7;
+  --accent-dim: rgba(110,231,183,.12);
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --blue: #93c5fd;
+  --purple: #c4b5fd;
+}
+
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); margin: 0; }
+body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+a { color: inherit; text-decoration: none; }
+a.link { color: var(--blue); }
+a.link:hover { text-decoration: underline; text-decoration-color: rgba(147,197,253,.3); }
+
+.muted { color: var(--sub); }
+.dim   { color: var(--dim); }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; line-height: 1.4;
+  border: 1px solid var(--line); color: var(--sub);
+  background: transparent;
+  cursor: default; user-select: none;
+}
+.pill.clickable { cursor: pointer; transition: all .12s; }
+.pill.clickable:hover { background: rgba(255,255,255,.04); border-color: var(--line-2); color: var(--ink); }
+.pill.green  { color: var(--accent); border-color: rgba(110,231,183,.35); background: rgba(110,231,183,.07); }
+.pill.amber  { color: var(--warn);   border-color: rgba(251,191,36,.35);  background: rgba(251,191,36,.07); }
+.pill.red    { color: var(--bad);    border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.07); }
+.pill.blue   { color: var(--blue);   border-color: rgba(147,197,253,.35); background: rgba(147,197,253,.07); }
+.pill.purple { color: var(--purple); border-color: rgba(196,181,253,.35); background: rgba(196,181,253,.07); }
+.pill.slate  { color: var(--sub); }
+.pill.active { background: rgba(255,255,255,.06); border-color: var(--line-2); color: var(--ink); }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: middle; }
+th { color: var(--sub); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; background: var(--panel-2); position: sticky; top: 0; }
+tr:hover td { background: rgba(255,255,255,.02); }
+
+input, textarea, select { background: var(--bg); border: 1px solid var(--line); color: var(--ink); padding: 8px 10px; border-radius: 8px; font: inherit; outline: none; }
+input:focus, textarea:focus, select:focus { border-color: var(--line-2); }
+button { background: var(--line); border: 1px solid var(--line-2); color: var(--ink); padding: 7px 11px; border-radius: 8px; font: inherit; cursor: pointer; font-size: 13px; }
+button:hover { background: var(--line-2); }
+button.primary { background: var(--accent); color: #06231a; border-color: var(--accent); font-weight: 600; }
+button.primary:hover { background: #5dd6a6; }
+button.ghost { background: transparent; border-color: var(--line); color: var(--sub); }
+button.ghost:hover { color: var(--ink); border-color: var(--line-2); }
+
+.facet-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; border-radius: 6px;
+  font-size: 13px; cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .1s, border-color .1s;
+}
+.facet-row:hover { background: rgba(255,255,255,.03); }
+.facet-row.active { background: var(--accent-dim); border-color: rgba(110,231,183,.3); color: var(--accent); }
+.facet-row .count { color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+.facet-row.active .count { color: var(--accent); }
+
+.facet-group-title {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--dim); padding: 12px 10px 4px; font-weight: 600;
+}
+
+.kbd { font-family: ui-monospace, monospace; font-size: 11px; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--sub); }
