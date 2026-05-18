@@ -59,6 +59,7 @@ const patchSchema = z.object({
   tags: z.array(z.string()).optional(),
   notes: z.string().nullable().optional(),
   pitchUrl: z.string().url().nullable().optional(),
+  pitchIssues: z.string().nullable().optional(),
 });
 
 export async function PATCH(

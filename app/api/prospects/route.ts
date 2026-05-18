@@ -34,6 +34,7 @@ const upsertSchema = z.object({
   notes: z.string().optional().nullable(),
   pitchUrl: z.string().url().optional().nullable(),
   pitchDeployedAt: z.string().datetime().optional().nullable(),
+  pitchIssues: z.string().optional().nullable(),
 });
 
 export async function GET(req: NextRequest) {
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
     tags: d.tags ?? [],
     notes: d.notes ?? null,
     pitchUrl: d.pitchUrl ?? null,
+    pitchIssues: d.pitchIssues ?? null,
     pitchDeployedAt: d.pitchDeployedAt ? new Date(d.pitchDeployedAt) : null,
     updatedAt: new Date(),
   };
