@@ -3,6 +3,9 @@ import { computeFollowups, FOLLOWUP_DEFAULT_DAYS } from "@/lib/followups";
 import { SnoozeMenu } from "./SnoozeMenu";
 import { Thumbnail } from "../components/Thumbnail";
 import { InlineStatus } from "../components/InlineStatus";
+import { ClickerFollowupPanel } from "./ClickerFollowupPanel";
+import { db, schema } from "@/lib/db";
+import { desc, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +21,10 @@ export default async function Followups({ searchParams }: { searchParams: Promis
   const includeSnoozed = sp.snoozed === "1";
   const rows = await computeFollowups({ minDays, includeSnoozed });
 
+  const templates = await db.select().from(schema.emailTemplates).orderBy(desc(schema.emailTemplates.updatedAt));
+  const clickers = await db.select().from(schema.prospects).where(eq(schema.prospects.status, "clicked"));
+  const clickerCount = clickers.filter((p) => !!p.contactEmail).length;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div>
@@ -26,6 +33,11 @@ export default async function Followups({ searchParams }: { searchParams: Promis
           Prospects you emailed {minDays}+ days ago that haven't replied. Sorted oldest first.
         </div>
       </div>
+
+      <ClickerFollowupPanel
+        templates={templates.map((t) => ({ id: t.id, name: t.name, scope: t.scope, subject: t.subject }))}
+        clickerCount={clickerCount}
+      />
 
       <div className="card" style={{ padding: 10, display: "flex", gap: 12, alignItems: "center" }}>
         <div style={{ display: "flex", gap: 4 }}>
