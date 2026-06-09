@@ -119,11 +119,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (!prospectId) {
-    await db.insert(schema.events).values({
-      type: "email_reply",
-      prospectId: null,
-      metadata: { unmatched: true, fromAddr, toAddr, subject, internetMessageId, emailId },
-    });
+    // Don't log an event — unmatched inbound mail (auto-replies, bounces, the user's own
+    // systems posting to the same address) is pure noise that pollutes the activity feed.
+    // The webhook still ack's 200 so Resend doesn't retry.
     return NextResponse.json({ ok: true, matched: false, fromAddr, toAddr });
   }
 

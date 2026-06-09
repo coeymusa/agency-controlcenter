@@ -11,3 +11,5 @@ drizzle/meta
 data/
 
 .vercel
+
+.env.production

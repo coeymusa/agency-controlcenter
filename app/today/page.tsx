@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { db, schema } from "@/lib/db";
-import { and, eq, desc, isNull, isNotNull, gt, count } from "drizzle-orm";
+import { and, eq, desc, isNull, isNotNull, gt, lt, count } from "drizzle-orm";
 import { computeFollowups } from "@/lib/followups";
 import { TodayActions } from "./TodayActions";
+import { BulkSendButton } from "./BulkSendButton";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,15 @@ export default async function Today() {
     .filter((p) => !followups.some((f) => f.prospect.id === p.id))
     .sort((a, b) => (warmMap.get(b.id) ?? 0) - (warmMap.get(a.id) ?? 0))
     .slice(0, 10);
+
+  // 5. Coming up: snoozed prospects waking in the next 24h
+  const wakeWindow = new Date(now.getTime() + 24 * 3600_000);
+  const comingUp = await db
+    .select()
+    .from(schema.prospects)
+    .where(and(isNotNull(schema.prospects.snoozedUntil), gt(schema.prospects.snoozedUntil, now), lt(schema.prospects.snoozedUntil, wakeWindow)))
+    .orderBy(schema.prospects.snoozedUntil)
+    .limit(20);
 
   const totalToDo = replies.length + followups.length + readyToSend.length;
   const hasFollowupTemplate = await db.select().from(schema.emailTemplates).where(eq(schema.emailTemplates.scope, "followup")).limit(1);
@@ -149,6 +159,14 @@ export default async function Today() {
         title="📤 Ready to send — first pitch"
         subtitle="Mock is built, contact is set, never been emailed."
         empty="No one ready to send. Either you've emailed everyone or contacts need filling in."
+        headerAction={
+          hasColdTemplate.length ? (
+            <BulkSendButton
+              slugs={readyToSend.filter((p) => !!p.pitchIssues?.trim()).map((p) => p.slug)}
+              scope="cold"
+            />
+          ) : null
+        }
       >
         {!hasColdTemplate.length && readyToSend.length > 0 && (
           <div className="card" style={{ padding: 12, borderColor: "var(--warn)", background: "rgba(251,191,36,.05)" }}>
@@ -186,6 +204,30 @@ export default async function Today() {
           );
         })}
       </Section>
+
+      {/* Coming up: snoozed prospects waking in the next 24h */}
+      {comingUp.length > 0 && (
+        <Section
+          title="⏳ Coming up — snoozed, waking soon"
+          subtitle="Prospects you snoozed that come back onto your plate within 24 hours."
+          empty=""
+        >
+          {comingUp.map((p) => {
+            const wakesIn = p.snoozedUntil ? Math.max(0, Math.floor((new Date(p.snoozedUntil).getTime() - now.getTime()) / 3600_000)) : 0;
+            return (
+              <div key={p.id} className="card" style={{ padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <Link href={`/prospects/${p.slug}`} className="link" style={{ fontWeight: 600, fontSize: 14 }}>{p.business}</Link>
+                  <div className="dim" style={{ fontSize: 11, marginTop: 2 }}>
+                    {[p.location, p.industry, p.status].filter(Boolean).join(" · ")} · wakes in <strong style={{ color: wakesIn < 6 ? "var(--warn)" : "var(--sub)" }}>{wakesIn}h</strong>
+                  </div>
+                </div>
+                <span className="muted" style={{ fontSize: 11 }}>{p.snoozedUntil ? new Date(p.snoozedUntil).toLocaleString() : ""}</span>
+              </div>
+            );
+          })}
+        </Section>
+      )}
 
       {/* Section 4: warm leads */}
       {warm.length > 0 && (
@@ -229,13 +271,16 @@ function Stat({ label, n, hue }: { label: string; n: number; hue: "green" | "amb
   );
 }
 
-function Section({ title, subtitle, empty, children }: { title: string; subtitle: string; empty: string; children: any }) {
+function Section({ title, subtitle, empty, children, headerAction }: { title: string; subtitle: string; empty: string; children: any; headerAction?: any }) {
   const hasChildren = Array.isArray(children) ? children.some((c: any) => c) : !!children;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div>
-        <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{title}</h2>
-        <div className="dim" style={{ fontSize: 12, marginTop: 2 }}>{subtitle}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{title}</h2>
+          <div className="dim" style={{ fontSize: 12, marginTop: 2 }}>{subtitle}</div>
+        </div>
+        {headerAction && hasChildren ? <div style={{ flexShrink: 0 }}>{headerAction}</div> : null}
       </div>
       {hasChildren ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{children}</div>

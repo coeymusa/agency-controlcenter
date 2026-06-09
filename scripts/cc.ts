@@ -4,7 +4,10 @@
  *
  *   pnpm cc prospect <business> [--slug s] [--email e] [--website w]
  *                    [--location l] [--industry i] [--status s]
- *                    [--pitch url] [--notes "..."] [--tag a --tag b]
+ *                    [--pitch url] [--issues "..."] [--notes "..."]
+ *                    [--tag a --tag b]
+ *   Only fields you pass are updated; omitted fields are left untouched
+ *   on existing prospects (POST upsert is now a partial update).
  *
  *   pnpm cc email <prospect-slug> --subject "..." [--to addr] [--from addr]
  *                  [--body "..."] [--link https://x] [--link https://y]
@@ -112,6 +115,7 @@ async function cmdProspect(a: ArgMap) {
     industry: flagStr(a, "industry"),
     status: flagStr(a, "status") as any,
     pitchUrl: flagStr(a, "pitch"),
+    pitchIssues: flagStr(a, "issues"),
     notes: flagStr(a, "notes"),
     tags: tags.length ? tags : undefined,
   };

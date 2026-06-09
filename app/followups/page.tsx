@@ -4,6 +4,7 @@ import { SnoozeMenu } from "./SnoozeMenu";
 import { Thumbnail } from "../components/Thumbnail";
 import { InlineStatus } from "../components/InlineStatus";
 import { ClickerFollowupPanel } from "./ClickerFollowupPanel";
+import { FollowupAllPanel } from "./FollowupAllPanel";
 import { db, schema } from "@/lib/db";
 import { desc, eq } from "drizzle-orm";
 
@@ -33,6 +34,12 @@ export default async function Followups({ searchParams }: { searchParams: Promis
           Prospects you emailed {minDays}+ days ago that haven't replied. Sorted oldest first.
         </div>
       </div>
+
+      <FollowupAllPanel
+        templates={templates.map((t) => ({ id: t.id, name: t.name, scope: t.scope, subject: t.subject }))}
+        slugs={rows.filter((r) => !r.isSnoozed && !!r.prospect.contactEmail).map((r) => r.prospect.slug)}
+        queueLabel={`${minDays}+ day`}
+      />
 
       <ClickerFollowupPanel
         templates={templates.map((t) => ({ id: t.id, name: t.name, scope: t.scope, subject: t.subject }))}

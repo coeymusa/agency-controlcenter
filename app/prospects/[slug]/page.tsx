@@ -152,16 +152,8 @@ export default async function ProspectDetail({ params }: { params: Promise<{ slu
         }}
       />
 
-      <div className="card">
-        <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--line)", fontWeight: 600 }}>Activity</div>
-        {events.length === 0 && <div style={{ padding: 14 }} className="muted">No events yet.</div>}
-        {events.slice(0, 50).map((ev) => (
-          <div key={ev.id} style={{ padding: "8px 14px", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-            <span className={`pill ${TYPE_PILL[ev.type] ?? "slate"}`}>{ev.type.replace("_", " ")}</span>
-            <span className="muted" style={{ fontSize: 11 }}>{new Date(ev.occurredAt).toLocaleString()}</span>
-          </div>
-        ))}
-      </div>
+      {/* Timeline: merged chronological stream of emails (sent + received) + events (opens, clicks, notes, status changes) */}
+      <Timeline emails={emails} events={events} links={links} />
 
       {links.length > 0 && (
         <div className="card">
@@ -213,4 +205,168 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
       <div style={{ marginTop: 4, fontSize: 14 }}>{value}</div>
     </div>
   );
+}
+
+type TLItem =
+  | { kind: "email_out"; at: Date; id: number; subject: string | null; bodyText: string | null; readAt: Date | null; resendMessageId: string | null }
+  | { kind: "email_in"; at: Date; id: number; subject: string | null; bodyText: string | null; fromAddr: string | null }
+  | { kind: "open"; at: Date; emailId: number | null }
+  | { kind: "click"; at: Date; emailId: number | null; linkTarget: string | null; linkLabel: string | null }
+  | { kind: "note"; at: Date; text: string }
+  | { kind: "status_change"; at: Date; from: string | null; to: string | null };
+
+function relTime(d: Date | null | undefined): string {
+  if (!d) return "—";
+  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  if (s < 86400 * 30) return Math.floor(s / 86400) + "d ago";
+  return new Date(d).toLocaleDateString();
+}
+
+function dayBucket(d: Date | null | undefined): string {
+  if (!d) return "Undated";
+  const dt = new Date(d);
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.floor((startToday.getTime() - new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime()) / 86400000);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return "This week";
+  if (diffDays < 30) return "This month";
+  return "Earlier";
+}
+
+function Timeline({ emails, events, links }: { emails: any[]; events: any[]; links: any[] }) {
+  // Merge into chronological items. Skip email_sent / email_reply events — those duplicate the emails table rows.
+  const linkById = new Map<number, any>(links.map((l) => [l.id, l]));
+  const items: TLItem[] = [];
+  for (const e of emails) {
+    if (e.direction === "outbound") {
+      items.push({ kind: "email_out", at: new Date(e.sentAt ?? e.createdAt), id: e.id, subject: e.subject, bodyText: e.bodyText, readAt: e.readAt, resendMessageId: e.resendMessageId });
+    } else if (e.direction === "inbound") {
+      items.push({ kind: "email_in", at: new Date(e.sentAt ?? e.createdAt), id: e.id, subject: e.subject, bodyText: e.bodyText, fromAddr: e.fromAddr });
+    }
+  }
+  for (const ev of events) {
+    const at = new Date(ev.occurredAt);
+    if (ev.type === "email_open") {
+      items.push({ kind: "open", at, emailId: ev.emailId });
+    } else if (ev.type === "link_click") {
+      const lk = ev.linkId ? linkById.get(ev.linkId) : null;
+      items.push({ kind: "click", at, emailId: ev.emailId, linkTarget: lk?.target ?? null, linkLabel: lk?.label ?? null });
+    } else if (ev.type === "note") {
+      items.push({ kind: "note", at, text: ((ev.metadata as any)?.text ?? "") as string });
+    } else if (ev.type === "status_change") {
+      const meta = (ev.metadata as any) ?? {};
+      items.push({ kind: "status_change", at, from: meta.from ?? meta.previousStatus ?? null, to: meta.to ?? meta.newStatus ?? null });
+    }
+    // email_sent / email_reply skipped — already covered by emails rows
+  }
+  items.sort((a, b) => b.at.getTime() - a.at.getTime());
+
+  const order = ["Today", "Yesterday", "This week", "This month", "Earlier", "Undated"];
+  const buckets = new Map<string, TLItem[]>();
+  for (const it of items) {
+    const b = dayBucket(it.at);
+    if (!buckets.has(b)) buckets.set(b, []);
+    buckets.get(b)!.push(it);
+  }
+
+  return (
+    <div className="card">
+      <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+        <span style={{ fontWeight: 600 }}>Timeline</span>
+        <span className="dim" style={{ fontSize: 11 }}>{items.length} event{items.length === 1 ? "" : "s"} · newest first</span>
+      </div>
+      {items.length === 0 && <div style={{ padding: 14 }} className="muted">Nothing has happened yet.</div>}
+      {order
+        .filter((b) => buckets.has(b))
+        .map((b) => {
+          const xs = buckets.get(b)!;
+          return (
+            <div key={b}>
+              <div style={{ padding: "6px 14px", background: "var(--bg-soft, rgba(255,255,255,0.02))", fontSize: 11, color: "var(--sub)", textTransform: "uppercase", letterSpacing: ".06em", display: "flex", gap: 8 }}>
+                <span>{b}</span>
+                <span className="dim">{xs.length}</span>
+              </div>
+              {xs.map((it, i) => (
+                <TimelineRow key={`${b}-${i}`} item={it} />
+              ))}
+            </div>
+          );
+        })}
+    </div>
+  );
+}
+
+function TimelineRow({ item }: { item: TLItem }) {
+  const time = (
+    <span className="muted" style={{ fontSize: 11, width: 80, flexShrink: 0, fontVariantNumeric: "tabular-nums" }} title={item.at.toLocaleString()}>
+      {relTime(item.at)}
+    </span>
+  );
+
+  const row = (icon: string, color: string, content: React.ReactNode) => (
+    <div style={{ padding: "10px 14px", borderTop: "1px solid var(--line)", display: "flex", gap: 12, alignItems: "flex-start" }}>
+      <span style={{ fontSize: 14, width: 22, textAlign: "center", flexShrink: 0, color }}>{icon}</span>
+      {time}
+      <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>{content}</div>
+    </div>
+  );
+
+  switch (item.kind) {
+    case "email_out": {
+      const preview = (item.bodyText ?? "").replace(/\s+/g, " ").slice(0, 160);
+      return row(
+        "📤",
+        "var(--blue)",
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div>
+            <Link href={`/sent/${item.id}`} className="link" style={{ fontWeight: 500 }}>{item.subject ?? "(no subject)"}</Link>
+            {!item.resendMessageId && <span className="pill slate" style={{ marginLeft: 8, fontSize: 10 }}>logged</span>}
+          </div>
+          {preview && <div className="muted" style={{ fontSize: 12, lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{preview}</div>}
+        </div>,
+      );
+    }
+    case "email_in": {
+      const preview = (item.bodyText ?? "").split("\n").filter((l) => !l.startsWith(">")).join(" ").slice(0, 160);
+      return row(
+        "↩",
+        "var(--accent)",
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div>
+            <Link href={`#email-${item.id}`} className="link" style={{ fontWeight: 500 }}>{item.subject ?? "(no subject)"}</Link>
+            {item.fromAddr && <span className="dim" style={{ marginLeft: 8, fontSize: 11 }}>from {item.fromAddr}</span>}
+          </div>
+          {preview && <div className="muted" style={{ fontSize: 12, lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{preview}</div>}
+        </div>,
+      );
+    }
+    case "open":
+      return row("👁", "var(--warn)", <span>they opened the email{item.emailId ? <> · <Link href={`/sent/${item.emailId}`} className="link" style={{ fontSize: 11 }}>open send ↗</Link></> : null}</span>);
+    case "click":
+      return row(
+        "🔗",
+        "var(--purple)",
+        <span>
+          they clicked{item.linkLabel ? ` "${item.linkLabel}"` : item.linkTarget ? <> <a href={item.linkTarget} target="_blank" rel="noreferrer" className="link" style={{ wordBreak: "break-all" }}>{item.linkTarget}</a></> : ""}
+          {item.emailId && <span className="dim" style={{ fontSize: 11 }}> · <Link href={`/sent/${item.emailId}`} className="link">send</Link></span>}
+        </span>,
+      );
+    case "note":
+      return row("📝", "var(--sub)", <span style={{ whiteSpace: "pre-wrap" }}>{item.text || "(empty note)"}</span>);
+    case "status_change":
+      return row(
+        "🔄",
+        "var(--sub)",
+        <span>
+          status changed
+          {item.from && <> from <strong>{item.from}</strong></>}
+          {item.to && <> to <strong>{item.to}</strong></>}
+        </span>,
+      );
+  }
 }

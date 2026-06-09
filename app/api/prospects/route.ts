@@ -56,6 +56,37 @@ export async function POST(req: NextRequest) {
   const slug = slugify(d.slug ?? d.business);
   const existing = await db.select().from(schema.prospects).where(eq(schema.prospects.slug, slug)).limit(1);
 
+  if (existing.length > 0) {
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (d.business !== undefined) patch.business = d.business;
+    if (d.contactName !== undefined) patch.contactName = d.contactName;
+    if (d.contactEmail !== undefined) patch.contactEmail = d.contactEmail;
+    if (d.website !== undefined) patch.website = d.website;
+    if (d.location !== undefined) patch.location = d.location;
+    if (d.industry !== undefined) patch.industry = d.industry;
+    if (d.status !== undefined) patch.status = d.status;
+    if (d.tags !== undefined) patch.tags = d.tags;
+    if (d.notes !== undefined) patch.notes = d.notes;
+    if (d.pitchUrl !== undefined) patch.pitchUrl = d.pitchUrl;
+    if (d.pitchIssues !== undefined) patch.pitchIssues = d.pitchIssues;
+    if (d.pitchDeployedAt !== undefined) {
+      patch.pitchDeployedAt = d.pitchDeployedAt ? new Date(d.pitchDeployedAt) : null;
+    }
+    const [row] = await db
+      .update(schema.prospects)
+      .set(patch)
+      .where(eq(schema.prospects.id, existing[0].id))
+      .returning();
+    if (patch.status !== undefined) {
+      await db.insert(schema.events).values({
+        type: "status_change",
+        prospectId: row.id,
+        metadata: { newStatus: row.status, via: "api" },
+      });
+    }
+    return NextResponse.json({ prospect: row, created: false });
+  }
+
   const values = {
     slug,
     business: d.business,
@@ -72,20 +103,6 @@ export async function POST(req: NextRequest) {
     pitchDeployedAt: d.pitchDeployedAt ? new Date(d.pitchDeployedAt) : null,
     updatedAt: new Date(),
   };
-
-  if (existing.length > 0) {
-    const [row] = await db
-      .update(schema.prospects)
-      .set(values)
-      .where(eq(schema.prospects.id, existing[0].id))
-      .returning();
-    await db.insert(schema.events).values({
-      type: "status_change",
-      prospectId: row.id,
-      metadata: { newStatus: row.status, via: "api" },
-    });
-    return NextResponse.json({ prospect: row, created: false });
-  }
   const [row] = await db.insert(schema.prospects).values(values).returning();
   await db.insert(schema.events).values({
     type: "status_change",

@@ -11,11 +11,16 @@ export type BulkFilter = {
   region?: string;
   industry?: string;
   tag?: string;
+  slugs?: string[];
 };
 
 export async function matchProspects(filter: Omit<BulkFilter, "templateId">) {
   let rows = await db.select().from(schema.prospects);
   rows = rows.filter((p) => !!p.contactEmail);
+  if (filter.slugs?.length) {
+    const allow = new Set(filter.slugs);
+    rows = rows.filter((p) => allow.has(p.slug));
+  }
   if (filter.statuses?.length) rows = rows.filter((p) => filter.statuses!.includes(p.status));
   if (filter.region) rows = rows.filter((p) => p.location === filter.region);
   if (filter.industry) rows = rows.filter((p) => p.industry === filter.industry);
