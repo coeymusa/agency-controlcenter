@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
+import { resendSend, textToHtml } from "@/lib/resend";
 import { eq, or, desc } from "drizzle-orm";
 import crypto from "node:crypto";
 
@@ -119,10 +120,37 @@ export async function POST(req: NextRequest) {
   }
 
   if (!prospectId) {
-    // Don't log an event — unmatched inbound mail (auto-replies, bounces, the user's own
-    // systems posting to the same address) is pure noise that pollutes the activity feed.
-    // The webhook still ack's 200 so Resend doesn't retry.
-    return NextResponse.json({ ok: true, matched: false, fromAddr, toAddr });
+    // Unmatched inbound. Known machine noise is dropped entirely; anything else
+    // (a human writing in from an address we don't know) is forwarded to the
+    // personal inbox so it is never lost. Either way no event is logged, so the
+    // activity feed stays prospect-only. The webhook acks 200 so Resend doesn't retry.
+    const NOISE_DOMAINS = ["rugbyunlocked.com", "recla.im", "lonsdalecommercials.co.uk", "builtbycorey.com"];
+    const FORWARD_TO = "coreymusa@outlook.com";
+    const fromDomain = fromAddr.split("@")[1]?.toLowerCase() ?? "";
+    const isNoise =
+      !fromAddr ||
+      NOISE_DOMAINS.includes(fromDomain) ||
+      fromAddr.toLowerCase() === FORWARD_TO || // don't loop our own forward replies
+      toAddr.toLowerCase().includes("dmarc@"); // aggregate reports are XML attachments we can't carry anyway
+    let forwarded = false;
+    if (!isNoise) {
+      try {
+        const meta =
+          `<p style="margin:0 0 12px;padding:8px 12px;background:#f4f1e8;border-left:3px solid #8a7a5c;font-size:13px">` +
+          `Unmatched inbound to <b>${toAddr || "(unknown)"}</b> from <b>${fromAddr}</b>. Reply goes straight to the sender.</p>`;
+        await resendSend({
+          to: FORWARD_TO,
+          replyTo: fromAddr,
+          subject: `[inbound] ${subject} (from ${fromAddr})`,
+          html: meta + (bodyHtml ?? textToHtml(bodyText ?? "(no body captured)")),
+          text: bodyText ?? undefined,
+        });
+        forwarded = true;
+      } catch (e) {
+        console.error("[resend-inbound] unmatched-forward failed", e);
+      }
+    }
+    return NextResponse.json({ ok: true, matched: false, forwarded, fromAddr, toAddr });
   }
 
   const [row] = await db
