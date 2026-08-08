@@ -9,6 +9,9 @@ type SendArgs = {
   text?: string;
   headers?: Record<string, string>;
   inReplyTo?: string;
+  // Override the Resend account (e.g. the FPS account for consulting sends).
+  // When set, the agency-wide RESEND_REPLY_TO default is NOT applied.
+  apiKey?: string;
 };
 
 type SendResult = {
@@ -16,13 +19,14 @@ type SendResult = {
 };
 
 export async function resendSend(args: SendArgs): Promise<SendResult> {
-  const key = await getSetting("RESEND_API_KEY");
+  const key = args.apiKey ?? (await getSetting("RESEND_API_KEY"));
   if (!key) throw new Error("RESEND_API_KEY not set — open /settings");
 
   const from = args.from ?? (await getSetting("RESEND_FROM"));
   if (!from) throw new Error("RESEND_FROM not set (default from address) — open /settings");
 
-  const replyTo = args.replyTo ?? (await getSetting("RESEND_REPLY_TO")) ?? undefined;
+  const replyTo =
+    args.replyTo ?? (args.apiKey ? undefined : (await getSetting("RESEND_REPLY_TO")) ?? undefined);
 
   const body: Record<string, unknown> = {
     from,
@@ -53,6 +57,24 @@ export async function resendSend(args: SendArgs): Promise<SendResult> {
   }
   const json = (await res.json()) as { id: string };
   return { id: json.id };
+}
+
+// Prospects tagged `consulting` send through the FPS Resend account as the
+// futureproofsolutions.im identity. Throws (rather than silently sending as
+// the agency) if the consulting sender isn't configured.
+export async function senderForTags(
+  tags: string[] | null | undefined,
+): Promise<{ apiKey?: string; from?: string; replyTo?: string }> {
+  if (!((tags ?? []) as string[]).includes("consulting")) return {};
+  const apiKey = await getSetting("RESEND_API_KEY_CONSULTING");
+  const from = await getSetting("RESEND_FROM_CONSULTING");
+  if (!apiKey || !from) {
+    throw new Error(
+      "Consulting sender not configured — set RESEND_API_KEY_CONSULTING and RESEND_FROM_CONSULTING in /settings",
+    );
+  }
+  const replyTo = (await getSetting("RESEND_REPLY_TO_CONSULTING")) ?? undefined;
+  return { apiKey, from, replyTo };
 }
 
 // Rewrite every http(s) URL in the body to a tracking short link. Returns

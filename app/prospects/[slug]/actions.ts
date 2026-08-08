@@ -179,10 +179,16 @@ export async function sendPitchEmail(
   args: { to?: string; from?: string; subject: string; body: string; inReplyToInternetMessageId?: string; scheduledFor?: string | null },
 ): Promise<{ ok: true; emailId: number; resendId: string | null; scheduledFor?: string } | { ok: false; error: string }> {
   const { getSetting } = await import("@/lib/settings");
-  const { resendSend, rewriteLinks, htmlWithPixel, textToHtml } = await import("@/lib/resend");
+  const { resendSend, rewriteLinks, htmlWithPixel, textToHtml, senderForTags } = await import("@/lib/resend");
   const { shortCode } = await import("@/lib/auth");
   const [prospect] = await db.select().from(schema.prospects).where(eq(schema.prospects.slug, slug)).limit(1);
   if (!prospect) return { ok: false, error: "prospect not found" };
+  let sender: { apiKey?: string; from?: string; replyTo?: string };
+  try {
+    sender = await senderForTags(prospect.tags as string[] | null);
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
   const toAddr = args.to ?? prospect.contactEmail ?? "";
   if (!toAddr) return { ok: false, error: "no recipient on file — add contactEmail first" };
   const base = (await getSetting("PUBLIC_BASE_URL")) ?? process.env.NEXT_PUBLIC_TRACK_BASE ?? "";
@@ -203,7 +209,7 @@ export async function sendPitchEmail(
     direction: "outbound",
     subject: args.subject,
     bodyText: bodyWithSig,
-    fromAddr: args.from ?? (await getSetting("RESEND_FROM")) ?? null,
+    fromAddr: args.from ?? sender.from ?? (await getSetting("RESEND_FROM")) ?? null,
     toAddr,
     sentAt: isScheduled ? null : new Date(),
     scheduledFor: isScheduled ? scheduled : null,
@@ -237,8 +243,9 @@ export async function sendPitchEmail(
 
   try {
     const sent = await resendSend({
-      to: toAddr, from: args.from, subject: args.subject, html, text: rewrittenText,
+      to: toAddr, from: args.from ?? sender.from, subject: args.subject, html, text: rewrittenText,
       inReplyTo: args.inReplyToInternetMessageId,
+      apiKey: sender.apiKey, replyTo: sender.replyTo,
     });
     await db.update(schema.emails).set({ bodyHtml: html, resendMessageId: sent.id }).where(eq(schema.emails.id, emailRow.id));
     await db.insert(schema.events).values({

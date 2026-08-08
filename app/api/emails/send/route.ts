@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db, schema } from "@/lib/db";
 import { requireBearer, shortCode } from "@/lib/auth";
 import { getSetting } from "@/lib/settings";
-import { resendSend, rewriteLinks, htmlWithPixel, textToHtml } from "@/lib/resend";
+import { resendSend, rewriteLinks, htmlWithPixel, textToHtml, senderForTags } from "@/lib/resend";
 import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
@@ -38,6 +38,18 @@ export async function POST(req: NextRequest) {
     prospectId = p.id;
   }
   if (!prospectId) return NextResponse.json({ error: "prospectId or prospectSlug required" }, { status: 400 });
+  if (!prospect) {
+    const [p] = await db.select().from(schema.prospects).where(eq(schema.prospects.id, prospectId)).limit(1);
+    if (!p) return NextResponse.json({ error: "Prospect not found" }, { status: 404 });
+    prospect = p;
+  }
+
+  let sender: { apiKey?: string; from?: string; replyTo?: string };
+  try {
+    sender = await senderForTags(prospect.tags as string[] | null);
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 400 });
+  }
 
   const toAddr = d.to ?? prospect?.contactEmail;
   if (!toAddr) return NextResponse.json({ error: "no recipient email on file" }, { status: 400 });
@@ -54,7 +66,7 @@ export async function POST(req: NextRequest) {
       subject: d.subject,
       bodyText: d.body,
       bodyHtml: null, // filled in after rewrite
-      fromAddr: d.from ?? (await getSetting("RESEND_FROM")) ?? null,
+      fromAddr: d.from ?? sender.from ?? (await getSetting("RESEND_FROM")) ?? null,
       toAddr,
       sentAt: new Date(),
     })
@@ -98,11 +110,12 @@ export async function POST(req: NextRequest) {
   try {
     const sent = await resendSend({
       to: toAddr,
-      from: d.from,
-      replyTo: d.replyTo,
+      from: d.from ?? sender.from,
+      replyTo: d.replyTo ?? sender.replyTo,
       subject: d.subject,
       html,
       text: rewrittenText,
+      apiKey: sender.apiKey,
     });
     await db.update(schema.emails)
       .set({ bodyHtml: html, resendMessageId: sent.id })

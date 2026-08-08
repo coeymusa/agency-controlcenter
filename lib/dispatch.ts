@@ -1,7 +1,7 @@
 import { db, schema } from "./db";
 import { and, eq, isNull, lte, isNotNull } from "drizzle-orm";
 import { getSetting } from "./settings";
-import { resendSend, rewriteLinks, htmlWithPixel, textToHtml } from "./resend";
+import { resendSend, rewriteLinks, htmlWithPixel, textToHtml, senderForTags } from "./resend";
 import { shortCode } from "./auth";
 
 // Sends any outbound emails whose `scheduled_for` has elapsed and that haven't
@@ -39,13 +39,21 @@ export async function dispatchScheduled(): Promise<{ sent: number; failed: { ema
       }
 
       const html = htmlWithPixel(textToHtml(rewrittenText), e.id, base);
+      const [prospect] = await db
+        .select()
+        .from(schema.prospects)
+        .where(eq(schema.prospects.id, e.prospectId))
+        .limit(1);
+      const sender = await senderForTags((prospect?.tags ?? null) as string[] | null);
       const result = await resendSend({
         to: e.toAddr ?? "",
-        from: e.fromAddr ?? undefined,
+        from: e.fromAddr ?? sender.from ?? undefined,
         subject: e.subject,
         html,
         text: rewrittenText,
         inReplyTo: e.inReplyTo ?? undefined,
+        apiKey: sender.apiKey,
+        replyTo: sender.replyTo,
       });
       await db.update(schema.emails)
         .set({ resendMessageId: result.id, sentAt: new Date(), bodyHtml: html })

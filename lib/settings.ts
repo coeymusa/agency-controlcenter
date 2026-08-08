@@ -22,6 +22,12 @@ export const SETTING_KEYS = [
   "RESEND_REPLY_TO",
   "RESEND_INBOUND_SECRET",
 
+  // Consulting sender — prospects tagged `consulting` send through the FPS
+  // Resend account (futureproofsolutions.im is verified there, not here).
+  "RESEND_API_KEY_CONSULTING",
+  "RESEND_FROM_CONSULTING",
+  "RESEND_REPLY_TO_CONSULTING",
+
   // Outbound defaults
   "DEFAULT_FROM_ADDRESS",
   "DEFAULT_FROM_NAME",
@@ -41,6 +47,7 @@ export const SECRET_KEYS: ReadonlySet<SettingKey> = new Set<SettingKey>([
   "GMAIL_REFRESH_TOKEN",
   "RESEND_API_KEY",
   "RESEND_INBOUND_SECRET",
+  "RESEND_API_KEY_CONSULTING",
 ]);
 
 export async function getSetting(key: SettingKey): Promise<string | null> {
